@@ -1,3 +1,14 @@
+Note (2018-05-20):
+I was researching old DBMSs for dbdb.io when I came across the source
+code for MetalBase from 1994. I couldn't find it anywhere else so I downloaded
+a copy of it and am posting it here. I am *not* the author of this system.
+I do not know what the original license should be for this code.
+--
+Andy Pavlo
+pavlo@cs.cmu.edu
+
+=========================================
+
                               ___                     _____      _____
         |  |     |        |  |   )                   /          /    /
         |`'|  _ -|-  _   ||  |  '_   _   .-.  _     /          /    /
