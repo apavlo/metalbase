@@ -1,0 +1,88 @@
+Time/Date Functions                                               MetalBase 5.0
+-------------------------------------------------------------------------------
+
+MetalBase handles time and date rather cleanly.  Two new types have been
+defined, mb_time and mb_date ... each is actually a parsed-out long, so they
+may be passed and returned by value as well as by reference.  There are several
+functions available for use with date and time fields (note that {struct tm *}
+is a system-supplied structure, and many many many functions are available for
+its use, completely independant of MetalBase):
+
+   mb_date tmtodate (struct tm *)
+      If the argument passed is a valid {struct tm*} pointer, its information
+      is converted to mb_date format, and the new variable returned.  If the
+      pointer is NULL, the current date is returned.
+
+   mb_time tmtotime (struct tm *)
+      If the argument passed is a valid {struct tm*} pointer, its information
+      is converted to mb_time format, and the new variable returned.  If the
+      pointer is NULL, the current time is returned.
+
+   struct tm *datetimetotm (mb_date, mb_time)
+      If the arguments passed represent valid dates and times, a static local
+      variable is filled out to conform to {struct tm*} conventions and
+      returned.  If either component is zero, that component is replaced by
+      the current date or time.
+
+Note that these functions have been #define'd to the following equivalents
+as well:
+
+      mb_date    curdate();
+         Returns the current date (assign with "mb_date x = curdate()" or
+         whatever strikes your fancy).
+
+      mb_time    curtime();
+         Returns the current time.
+
+      struct tm *curdatetime();
+         Returns the curent date and time in a {struct tm *} structure.
+
+There are also two format functions:
+
+   char *fmt_date (mb_date, opt)
+      The date does _not_ default to the current date if it ==0L.  This command
+      returns a pointer to a static local character array, in which the date
+      represented will be formated to one of the following conventions:
+          opt:           format:
+         default          mm/dd/yyyy
+           1              mm/dd/yy
+           2              yymmdd
+      Note that we're approaching 2000, so I don't suggest using mm/dd/yy or
+      yymmdd... just a personal peeve.  Not that my code will be around that
+      long or anything, but it's only what, 8 years away?
+
+   char *fmt_time (mb_time, opt)
+      The time does _not_ default to the current time if it ==0L.  This command
+      returns a pointer to a static local character array, in which the time
+      represented will be formated to one of the following conventions:
+          opt:           format:
+         default          hh:mm:ss   24-hour
+           1              hh:mm xx   where "xx" == "am" or "pm"
+           2              hh:mm      24-hour
+
+And, accordingly, there are two scanning functions:
+
+   mb_date scn_date (char *)
+      The string must contain a date, which may be in any of the formats
+      supported by fmt_date, and will be scanned appropriately into an
+      mb_date structure.  Note that this function assumes the separator
+      WILL BE '/' ... if you want hyphens as well, you'll have to add
+      that.
+
+   mb_time scn_time (char *)
+      The string must contain a time, which may be in any of the formats
+      supported by fmt_time, and will be scanned appropriately into an
+      mb_time structure.
+
+There is also a function to find the number of seconds that have elapsed since
+a given mb_time:
+   long   elap_t (mb_time)
+If you pass it 0L, it will return the number of seconds since midnight.
+
+You can simulate a timer by doing something like this:
+         mb_time  a;
+         a = curtime();   /* Start timer */
+         for (;;)
+            printf ("It's been %ld seconds\n", elap_t(a));
+Rather useful at times. :)  Ha!  Times!  A pun!  Get it?  Hooo...
+

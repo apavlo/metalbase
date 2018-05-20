@@ -1,0 +1,213 @@
+Relation Locking                                                  MetalBase 5.0
+-------------------------------------------------------------------------------
+
+
+Because MetalBase does not run on a client/server basis (there is no huge
+superuser-running program which performs queries when requested), processes
+must fight each other for access to relations.  In order to ensure database
+integrity, a system of locking has been implemented which provides a timing
+for enlarging atomic-level operations; those which should be accomplished in
+their entireity before another process may use the relation.  *nix-style file
+locking is not portable enough to be useful here, much to my dismay... many
+sites don't have any such ability through the standard compiler; worse, on
+some systems (Xenix among them), calls succeed when they don't do anything.
+
+Version 5.0 supports two forms of locking, one of which is transparent and
+used by the system internally, the other being exposed to the user.  "Temporary
+locks" are placed by the system to enlarge the timescale of atomic operations,
+to ensure concurrent querying/updating will not corrupt the database.  These
+locks are placed on the relation automatically, during all operations--adding,
+updating, deleting, and querying the database, as well as in the process of
+allowing the user to place the more permanent exclusive locks.
+
+
+TEMPORARY LOCKS ---------------------------------------------------------------
+
+
+Temporary locks are used to give a single process control over a relation for
+   a short period of time; from a fraction of a second (needed at the beginning
+   of a service call to ensure no exclusive lock is in place) to a few seconds
+   or more (for the duration of an index update).  The basic algorithm relies
+   on the fact that each process has a unique identifier in the range 0-65535;
+   MetalBase 5.0 uses the process ID for this.  In essence, each relation
+   stamps its identifier into a specific place in the relation, and reads back
+   what is there--if it reads its own process ID, it continues with its work,
+   leaving the stamp (and thus a temporary lock) in place.
+
+That is a far oversimplified version.  In reality, because of the way most
+   multi-user systems work, a scheme with only one such check will always grant
+   a lock to any relation; the write-our-PID followed by read-the-byte will
+   almost always return the PID simply because the write and read are so close
+   together that they are almost guaranteed to be processed in sequence,
+   without allowing other processes to vie for the lock.  There is also the
+   issue of a process having terminated, leaving a temporary lock in place; in
+   that case, the relation would be useless until such a lock could be cleared.
+   Moreover, in practice, such a scheme would give control to the same process
+   over and over, not allowing any other process a chance to work (in
+   benchmarks, three terminals running the same program to add records
+   constantly over 30 seconds ended up with results of the form: 1st==500
+   records, 2nd==2 records, 3rd==0 records).
+
+The first problem is the granting of a temporary lock to one process at any
+   given time--this is done by iterating the check described above three times:
+
+     set_hack(): read the three hack-lock positions (6 bytes)
+                 if our PID is in any, write a zero there and goto set_hack()
+                 if all three aren't zeroes, goto set_hack()
+                 write our PID in the third
+
+                 read the three hack-lock positions
+                 if first and second aren't zeroes, goto set_hack()
+                 if third isn't our PID, goto set_hack()
+                 write our PID in the second
+
+                 read the three hack-lock positions
+                 if first isn't zeroes, goto set_hack()
+                 if second and third aren't our PID, goto set_hack()
+                 write our PID in the first
+
+                 read the three hack-lock positions
+                 if any of the three aren't our PID, goto set_hack()
+
+     clr_hack(): read the three hack-lock positions (6 bytes)
+                 if all three aren't our PID,
+                    (error case 1--abort)
+                 write zeroes in all three
+
+Iterating the process in this fashion shrinks the window for a race condition
+   to such an extent that it's negligible... and that solves the first of the
+   three problems.  The second would be distribution of resources; as the
+   example above, just letting them take their chances doesn't cut it.  To
+   more evenly distribute access to a relation, a hack lock, as described
+   above, is used to gain access to a thirty-position queue, of the form:
+
+ elcks hacklocks  queue
+  [ ]   [ | | ]   [ | | | | | | | | | | | | | | | | | | | | | | | | | | | | | ]
+
+The leftmost position in the queue is position #0, indicating a temporary lock
+   is in place.  Once a relation has gained control via a hack lock, it reads
+   the 60 bytes of queue and finds the first empty slot (denoted by a 0 PID).
+   It then places its own PID in that position and clears the hacklock for any
+   other process to use.  If the position found free is #0, it has just placed
+   a temporary lock and the process can go about its service.  Otherwise, the
+   process will enter the following loop:
+
+             A: read queue position (CURPOS -1)
+                if non-zero, go to A
+                write our PID in position (CURPOS -1)
+                write zero in position (CURPOS)
+                CURPOS -= 1
+                if (CURPOS == 0)  break -- temporary lock is in place
+                otherwise, goto A
+
+This loop works without placing hacklocks before reading because exactly one
+   process is guaranteed to be reading a position in the queue at any given
+   time, and the free space will bubble from the left to right as temporary
+   locks are freed.  Note that if a position in the queue can't be found to
+   start with, the system will return MB_BUSY.  This method ensures equal time
+   for equal requests, for up to thirty processes simultaneously; note that
+   many more processes can be run at once on a relation, but only thirty
+   queries will be serviced at any time.  This is an extremely reasonable
+   restriction.
+
+The third and final problem with regard to locking is the most nerve-wracking;
+   if a process dies, leaving a lock in place, other processes will wait
+   forever for the lock to be cleared.  Originally, the BLAST utility was the
+   only way to remove these locks; pre-release 5.0 was able to detect this
+   condition under some circumstances, but it was too flaky to rely upon.  In
+   essence, since inter-process communication is a no-no for portability,
+   MetalBase needed a way to determine if a process were still active or not...
+   to that end, the temporary-lock queue has been equipped with a strobe byte
+   for each position:
+
+ elcks hacklocks  queue
+  [ ]   [ | | ]   [ | | | | | | | | | | | | | | | | | | | | | | | | | | | | | ]
+                  < : : : : : : : : : : : : : : : : : : : : : : : : : : : : : >
+                  strobes
+
+Whenever a process is either waiting in the queue for a turn, or when a process
+   has a temporary lock in place and is querying or updating the database, it
+   is constantly incrementing a byte found in the current lock position's
+   strobe... to be exact, within the queue, the strobe is changed every second;
+   within a query, whenever the depth is a multiple of 5; within an update,
+   at various locations initially followed by a call at every _balance() call.
+   If a process waiting in the queue finds that three seconds go by without
+   a strobe being changed, it determines itself justified in taking over the
+   position, under the assumption that the old process is dead.  Note that
+   this approach will not work well with DOS networks, which often bring long
+   lag-times which would destroy concurrency... not always, but often enough
+   to worry about.  IPC would be the best way to improve this, but there is
+   no standard which does not require superuser access and device drivers on
+   any *nix platform, and that's unacceptable for MB.
+
+When jockying for a hacklock, if three seconds elapse without a request being
+   accepted, a process will erase all three bytes and try again.  If a process
+   halts with an exclusive lock in place (mb_rmv(), mb_exit() and mb_die()
+   remove any locks before closing, so that's not a problem--the process must
+   be halted by a signal or power cycle), the exclusive lock must be removed
+   with BLAST before the relation will be useful again.
+
+
+EXCLUSIVE (RELATION-WIDE) LOCKS -----------------------------------------------
+
+
+An exclusive lock is placed by a user using mb_lck(), and removed with mb_unl()
+   [these two functions were forgotten in the 4.0 release--sorry].  Once an
+   exclusive lock is placed, any action requested by another process will fail
+   with the error MB_LOCKED, until the lock is removed.
+
+The flow for mb_lck() and mb_unl() are as follows:
+
+   mb_lck():  set temporary lock on relation
+              read exclusive-lock PID
+              if (PID == ours)  clear temp lock; stupid--you already locked it
+              if (PID != 0)     clear temp lock; return MB_LOCKED by another
+              write our PID in the exclusive-lock byte
+              clear temp lock; return MB_OKAY
+
+   mb_unl():  set temporary lock on relation
+              read exclusive-lock PID
+              if (PID == ours)
+                 write 0 there
+              clear temp lock; return MB_OKAY
+
+This simple procedure works, because all requests of the relation must pass
+the following check before operating (a temporary lock must be in place before
+calling this routine):
+
+   _chk_elck(): check exclusive-lock PID
+                if (PID != 0 && PID != ours)  return MB_LOCKED
+                return MB_OKAY
+
+These routines are slightly more complicated in the source, because there is
+a bit of duality of information--each relation structure also retains flags
+indicating whether the relation is temp-locked and/or exclusive-locked.  There
+are more failure conditions because of this, which ensures that locks will
+not be placed when they should not be.
+
+
+EXCLUSIVE (RECORD-LEVEL) LOCKS ------------------------------------------------
+
+
+There are none in MetalBase 5.0--let me know if you need this, so I'll know
+what to spend my time on.  It'll be in a later version--just a matter of when.
+
+
+LOCKFILES ---------------------------------------------------------------------
+
+
+The kind of work described above--all the busyloops and so forth--really,
+really slow down access to a relation... the fewer things a file is doing at
+any given time, the more you can get accomplished.  So the locking mechanism
+has been moved off to a separate file, named after the relation (with the
+extension replaced with ".LCK") and placed in a temporary directory (see
+trouble.dox, under MB_TMPDIR).  This file is created every time mb_inc() is
+called, if it does not already exist.
+
+There is exactly one lockfile for each relation, kept in a common temporary
+directory.  You can delete the lockfile at any time, as long as you're sure
+there is no one using the relation at the time (this would be a Bad Thing to
+delete if the relation is in use).  Deleting the lockfile will erase any
+remaining exclusive lock, and reset the number of users on the relation to
+zero.
+

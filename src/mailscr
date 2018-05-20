@@ -1,0 +1,74 @@
+#!/bin/sh
+#
+
+if [ -r /coherent ]
+then
+   if [ ":`cat /etc/domain 2> /dev/null`" = ":virtual" ]
+   then
+      richid="richid"
+   else
+      richid="mwcbbs!virtual!richid"
+   fi
+else
+   richid="richid@owlnet.rice.edu"
+fi
+
+echo
+echo "MetalBase 5.0 is now installed.  Move to the directory ../sample and"
+echo "continue with the ../ReadMe file for a test run."
+echo
+echo "In order to see how much time I should spend developing this code, it"
+echo "would be helpful for me to know how many people got it.  There's also"
+echo "been talk of a mailing list, though I'm not sure I'm gonna start one."
+echo "May I send a message to $richid, telling him you've installed"
+echo -n "this code? [Yn] "
+ans=x
+while [ ":$ans" != ":yes" -a ":$ans" != ":no" ]
+do
+   read ans
+   if [ ":$ans" = ":Y" -o ":$ans" = ":y" -o ":$ans" = ":" ]; then
+      ans="yes"
+   fi
+   if [ ":$ans" = ":N" -o ":$ans" = ":n" ]; then
+      ans="no"
+   fi
+done
+
+if [ ":$ans" = ":no" ]
+then
+   echo "Thanks anyway.  Enjoy the package."
+else
+   echo
+   echo "Thank you.  Just a moment..."
+
+   if [ -r /usr/ucb/mail ]
+   then
+      /usr/ucb/mail -s "MetalBase 5.0 Installed" $richid << END
+MetalBase Version 5.0
+---------------------
+Package installed on `date 2> /dev/null`:
+
+   User         - $USER / $LOGNAME / `logname 2> /dev/null`
+   Architecture - `arch 2> /dev/null`
+   Uname/UUname - `uname -a 2> /dev/null`
+
+END
+   else
+      opt=""
+
+      mail $richid << END
+MetalBase Version 5.0
+---------------------
+Package installed on `date 2> /dev/null`:
+
+   User         - $USER / $LOGNAME / `logname 2> /dev/null`
+   Architecture - `arch 2> /dev/null`
+   Uname/UUname - `uname -a 2> /dev/null`
+
+END
+   fi
+
+   echo
+   echo "Mail sent.  Enjoy the package."
+fi
+

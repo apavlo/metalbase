@@ -1,0 +1,553 @@
+    /\
+   /  \
+../    \....METALBASE Version 5.0..............................................
+ /      \
+/        \  Written From October 1990 by Huan-Ti
+\        /
+ \      /   Revision 3.1 released December 10th 1990
+  \    /    Revision 3.2 released December 10th 1991
+   \  /     Revision 4.0 released Febuary 14th 1992
+    \/      Revision 4.1 released April 1st 1992
+            Revision 4.1a released May 10th 1992
+            Revision 5.0 released October 1st 1992
+
+
+
+
+
+
+       "And Calvin ate.  And Food Lion went out of business.  Amen."
+
+                                                   --1st Calvin 4:8
+
+
+WHY_METALBASE_?________________________________________________________________
+
+    The Amiga 500 multi-tasks.  Wow.  It has great graphics.  Yeah.  Phenomenal
+sound.  Yippee.  It costs $500.  I bought one.
+    A DBase package costs more than the computer.  So does Paradox.  And
+Informix.  And almost every other database package on the market.  I didn't
+buy one.
+    But I needed a database for my system--anybody who's ever worked with a
+database knows they're addictive; code that's written without a flexible
+database backing it up lacks something.  And DBase wants $600 to put that
+something back into programs.  No thanks.
+    That's why MetalBase was written... its forerunners (versions 1.0 and
+2.0, not available) were designed by the same author with the Amiga line's
+needs specifically in mind:  relatively slow floppy drives (Compared to hard
+drives), so sparse read-head maneuvering was essential.  Relatively small
+memory, when compared with the amounts of memory required by most C compilers
+(Lattice needs roughly 300k just to run, for example), so the code had to be
+consise, pure, and use few variables.  Expansion was always available; hard
+drives, huge memory capacities, extra processors, ram drives -- so the system
+had to be readily expandible and flexible enough to meet the requirements of
+both a 512k, 1-drive machine and a 32-megabyte, 200-meg hard drive-driven
+setup.  And they were.
+    The problem was, Amigas can multi-task.  So what is the rest of the
+computer doing while a database runs around looking up records on one drive?
+Nothing.  Why not let it look up records on another drive?  Fine... that works.
+What about on the same drive... using, say, a ram disk, so there are no real
+read-heads to worry about positioning?  That would mean each relation would
+have to support multi-user access... a requirement around which MetalBase
+versions 3.0 and up focus.  Not only can any given terminal access many files
+at once, but on multi-terminal systems, each terminal can work simultaneously
+on any given file.  Terminals can each use as many relations as a system will
+allow, and each relation can be used by some sixty-four users at once.  The
+code used to create MetalBase 3.X and up is completely compatible with the
+Unix operating system and all of its derivatives, so its inherent multi-user
+ability places it in firm working footing on the most advanced systems on the
+market.
+    But the IBM users complained.  And the unix users complained.  And lo,
+even the Amiga people complained--the code didn't work all the time, and
+was generally crude.  So MetalBase 4.0 solved these troubles and more--a
+complete rewrite of the engine has provided even faster and more efficient
+algorithms, which keep MetalBase indices in AVL balance at all times.  More
+convenient functions and operations (such as build's ability to create header
+files for your code which reflect a schema's structure) have been added,
+along with several utility programs for maintaining your database.
+    Relations are designed by a user to match his/her exact requirements,
+indices placed as needed on single or composite fields, and records can be
+added, retrieved, changed, and deleted as any C programmer so desires.  The
+interface is as simple as possible, very fast in execution, and provides a wide
+range of error types for exact specification of problems.  A user on any
+terminal can choose to lock out other users from any number of relations, so
+sweeping changes in data will not be read by others before they can take
+place.  Automatic temporary locks are placed on a relation which is about
+to undergo a deletion or addition, strategically delaying other users' access
+to files for less than seconds, so that no data will be read until all indices
+have been updated correctly.  This process is entirely system-driven; users
+never need worry about it at all.  If one user is adding a record to a
+relation, any terminal requesting a record lookup will simply wait until the
+addition is complete before proceeding.  As records are deleted and added
+through normal use, the algorithms used to update indices automatically keep
+them at top operating speeds, so any given relation's number of records can
+grow exponentially while causing only a linear increase in look-up time.  Any
+relation can contain over four billion records (Nearly four billion more than
+most systems will ever need), and each record's length can be as large as its
+system's memory can handle.  In perspective, MetalBase is infinitely
+expandible, while requiring very little of the system on which it operates.
+
+[ The actual number of records allowable is 4,294,967,296... if you were to
+  add one record a second, it would take over 136 years to reach this limit ]
+
+RELATION_DESIGN________________________________________________________________
+
+        A sample relation.  Data      Field # ->  1    2   3    4       5
+        is read by selecting one     Record #   _____ ___ ____ ___ ___________
+        record from the others by          1   |_____|___|____|___|___________|
+        various criteria, and              2   |_____|___|____|___|___________|
+        returning it to the user.          3   |Smith| 12| 114| A2|Houston, TX|
+        Record 3 (In this example--        4   |-----|---|----|---|-----------|
+        actual MetalBase records need
+        no such numbering system), if returned, would be placed in a structure
+        containing Smith,12,114,A2, and Houston,TX in the appropriate elements.
+
+    A relation is a collection of records, each record consisting of the same
+number of fields--blocks of data whose individual lengths remain constant from
+record to record.  Each field need not have the same length as the others in
+any given record, but from record to record, a field's length will remain the
+same. The data the fields contain is, of course, the main purpose of a
+database--when thousands of records exist, a system without a database would
+need vast amounts of time to find any given record.  Databases decrease
+dramatically record retrieval time, while requiring as little additional time
+to add new and change old records as possible.
+    The key to a database is its indices--pointers arranged in such a fashion
+as to show the system where to look for the record for which it is searching.
+The more of these collections of pointers, or indices, a database has, the
+greater the number of different fields a system can search through in order to
+find a record meeting certain criteria for a field (Or fields... a single index
+can be used to first sort records by one field, and also sort duplicates with
+respect to a second field, etc.  MetalBase allows these composite indices to
+key off of as many as 999 different fields).  However, databases require time
+to update each index every time you add, delete, or change a field which has an
+index placed upon it.  So although retrieval criteria possibilites are expanded
+by using many indices, the amount of time required to change the existing
+records in a database will also increase.  For this reason, the number of
+indices a relation will have should be considered carefully--use what is
+needed, but no more.
+
+    Relations are built from schema files, which decribe the relation in a
+more human-friendly syntax.  See build.dox for a more complete description of
+this process.
+
+IMPLEMENTAION__________________________________________________________________
+
+    A sample program implementing MetalBase follows:
+
+     #include <mbase.h>
+     #include "equipment.h"
+
+     main ()
+     {
+        relation *rel;
+
+        if ((rel = mb_inc ("/usr/joe/equipment", strtokey("key"))) == RNULL) {
+           printf ("Can't open database - %s.\n", mb_error);
+           mb_exit (1);
+        }
+
+        equipment_rec.price_code = 114.20;       /* Set up initial values */
+        strcpy (equipment_rec.part_numb, "117"); /* to search for...      */
+
+        if (mb_sel (rel, 0, &equipment_rec, EQUAL, NULL) != 0) {
+           printf  ("%s.\n", mb_error);
+           mb_exit (1);
+        }
+
+        /* Now that we've found a record, change it to something else... */
+
+        equipment_rec.num_purch = 14;
+        strcpy (equipment_rec.customer,  "Su");
+        strcpy (equipment_rec.part_numb, "112");
+        strcpy (equipment_rec.shop_addr, "Dallas, TX");
+        equipment_rec.price_code = 12;
+
+        mb_upd (rel, &equipment_rec);  /* Update the current selection */
+
+        mb_rmv (rel); // Unnecessary before mb_exit(), but good practice.
+        mb_exit (0);  // Always a good idea to use mb_exit() with MetalBase.
+     }
+
+    Manipulation of relations using MetalBase is simple... by including the
+MetalBase header file in your programs and compiling using the option "-lmb"
+(Or "library ..., mbase.lib;", depending on your compiler), you add extra
+commands to C.  A summary of these follows:
+
+ - mb_inc (filename, int) -- this command includes a relation on your desktop,
+        so that it becomes accessable.  Any relation you wish to work with
+        must be included using this call.  If mb_inc returns RNULL ( defined
+        as (relation *)0 ), an error has occurred (The most likely one is that
+        the relation cannot be found under the given directory--mb_errno will
+        be set to an error number, and mb_error (global char*) will contain
+        text regarding the problem).  Note that "filename" does NOT include the
+        ".rel" suffix.  BUILD, in analog, does not require that you include the
+        ".s" suffix on the name of the schema you are working with, but the
+        schema file itself must end in ".s", as relations must end in ".rel",
+        forms in ".frm" and reports in ".rpt".
+
+        The integer passed in is the encryption key for the relation--see the
+        section on encryption for more information.  Note that MetalBase 3.0,
+        as it does not support encryption, does not require this integer; all
+        versions 3.1 and up do.  Sorry for the inconvenience.
+
+        I also STRONGLY recommend the use of the function strtokey() to
+        obtain this integer from an ascii string... all utility programs
+        shipped with MetalBase ask for "Encryption Key"s, and they expect
+        a string to hash up with strtokey().  So if you use encryption but
+        not this method of getting the integer, you're SOL when trying to
+        use vr or report.  In fact, I encourage this so strongly that, in
+        future releases, I may replace the integer argument with a string
+        argument and do away with strtokey() entirely.
+
+ - mb_tst (filename) -- This function goes through all the steps needed to
+        make sure a given relation can be opened, but doesn't open it (thus
+        it doesn't need an encryption key).  vr uses this one to make sure
+        it can open a relation before asking for a key; that's pretty much
+        its only use.
+
+ - mb_sel (file, index, buffer, action, comparison_buffer) -- this command
+        searches a given relation for the record you desire, described by
+        "action" and "comparison_value".  "file" is a pointer to the structure
+        returned by mb_inc... this structure is used in all other functions to
+        indicate which relation you intend to work with.  "index" is the index
+        number by which you wish to search... numbered sequentially by the
+        order in which they were defined in the schema, starting with the
+        number 0.  To save trouble when changing schema, it is recommended you
+        use the routine idxnum() to look up an index number by name.  "buffer"
+        is merely a structure (like &equipment_rec above) into which MetalBase
+        can return the record, when found.  A list of valid actions follows:
+           FIRST (or FRST) -- searches for the first record alphabetically.
+           LAST -- similarly, seeks the last record alphabetically.
+           NEXT -- searches for the next sequential record alphabetically.
+           PREVIOUS (PREV) -- as NEXT, searches for the previous record.
+           EQUAL (EQUL) -- seeks a record containing fields exactly those in
+                "comparison_buffer".  If the index used allows duplicates and
+                some exist, EQUAL returns the first of these: all duplicates
+                can be found by subsequent "NEXT" searches.  Note that the
+                comparison_buffer and the return buffer need not be the same
+                space, although they may.
+           GTEQ -- EQUAL returns a NOT_FOUND error if a record cannot be found
+                to precisely match the comparison.  GTEQ acts as EQUAL in all
+                respects but this;  GTEQ will find the record greater
+                alphabetically, or precisely equal to (if one exists), the
+                comparison.  In the event that duplicates of the record exist
+                ("Duplicate" being defined logically as a record whose fields
+                used by the current index are precisely equal to another such
+                record's fields for the same index), GTEQ returns the first
+                of these: all duplicates can be found by subsequent "NEXT"
+                searches.
+           GTHAN (GTHN) -- Acts as GTEQ, except GTHAN will ignore precise
+                matches.  Useful if you wish to begin searching names, say,
+                after the "Smith"'s.  Another way to accomplish this would be
+                to use LTEQ + "Smith", followed by a NEXT...
+           LTEQ -- Searches for a record less alphabetically, or equal to (if
+                one exists), the comparison.  In the event that duplicates of
+                the record about to be returned exist, LTEQ returns the last of
+                these: all duplicates can be found by subsequent "PREVIOUS"
+                searches.
+           LTHN (LTHAN) -- Similar to LTEQ in all but one regard: LTHAN will
+                not return a precise duplicate, instead searching to its
+                left for the record before it.
+           CURR (CURRENT) -- After a record is found by a search, MetalBase
+                remembers the location of the record.  Searching with the
+                action CURRENT re-reads this most recent record, and returns
+                it in its entirety.  As with FIRST, LAST, NEXT and PREVIOUS,
+                the value of "comparison_value" is irrelevant in CURRENT --
+                however, CURRENT is also oblivious to index used (As no
+                actual searching takes place... MetalBase merely recalls a
+                known record).
+        Please note that the above-described action names merely stand for
+        integers, and MetalBase will not understand if you use quotes around
+        the names.  These actions must also be written in upper-case.
+        "comparison_buffer" is a structure identical to "buffer", but any
+        data in any of the fields is used for comparison when searching for
+        EQUAL, GTEQ, LTEQ, GTHAN or LTHAN.  There are three ways to use that--
+        give it a new record...
+            sample_str   sample_rec, target_rec;
+            target_rec.num = 15;
+            mb_sel (rel, idxnum("ix_num"), &sample_rec, EQUAL, &target_rec)
+        or, the same one twice...
+            sample_str   sample_rec;
+            sample_rec.num = 15;
+            mb_sel (rel, idxnum("ix_num"), &sample_rec, EQUAL, &sample_rec)
+        or, what I do most, pass in NULL as the comparison (works just like
+        the one above):
+            sample_str   sample_rec;
+            sample_rec.num = 15;
+            mb_sel (rel, idxnum("ix_num"), &sample_rec, EQUAL, NULL)
+        All three of these would have the same effect.
+
+ - mb_upd (file, new_rec) -- After a record is found, it may be updated
+        through mb_upd.  MetalBase simply replaces the old record's fields with
+        those indicated in "new_rec".  This process usually requires more time
+        than any other, as the record must be disconnected from each index in
+        turn, changed, and reconnected.  Occasionally, changing a record will
+        not change certain indices--when this occurs, the index is simply
+        skipped.  An update, like an add, will be aborted if the changes would
+        violate a no-duplicates-allowed index.
+
+ - mb_del (file) -- After a record is found, it may be removed completely by
+        use of mb_del.  Once a record is deleted thus, it CANNOT be retrieved.
+        Pre-5.0 versions of MetalBase used a second argument for tracking the
+        current pointer; this code was broken and I removed it.  :)  So now
+        there's no second argument--again, sorry for changing things on ya.
+
+ - mb_add (file, new_rec) -- This command adds a new record to a relation.  If
+        adding the record described by "new_rec" would violate a non-duplicate
+        index, the addition to the relation will be aborted and an error
+        returned (See the section on Errors, below).
+
+ - mb_lck (file) -- If, as an example, a program reads a record from a relation
+        used by many terminals simulaneously, waits for a user to enter a new
+        value for one of its fields, and updates the record, it could prove
+        disastrous if the record was read by one terminal, then another...
+        updated on one & re-written, and re-updated by the second terminal.  To
+        prevent this type of scenario, mb_lck, when used, excludes other users
+        from reading or writing to a relation.  Every operation they try
+        (including mb_inc()) will return MB_LOCKED until the process which
+        called mb_lck() calls mb_unl().
+
+ - mb_unl (file) -- Removes a lock placed on a relation by mv_lck.
+
+ - mb_rmv (file) -- This command removes a relation from your desktop.  If the
+        file has been locked previously (via mb_lck), the lock is removed.
+
+ - mb_die () -- This command removes all open relations from your desktop, as
+        if you'd called each one in turn with mb_rmv(file).
+
+ - mb_exit (ret_code) -- Calls mb_die(), followed by exit(ret_code).
+
+ - mb_num (file) -- Returns the number of records in a relation.  Wheeee...
+
+
+ERRORS_________________________________________________________________________
+
+In addition, see the separate documentation on troubleshooting, under the name
+trouble.dox.  There's not much, but I tried...
+
+Build / Errors :
+
+      Cannot open <file.s>............The schema indicated to Build cannot
+                                        be found.
+      File <file.s> holds no schema...The schema indicated cannot be used
+        definition                      as a definition of a relation.  The
+                                        most likely cause is that the file is
+                                        empty.
+      Field <field> declared after....All fields must be declared before any
+        indices                        indices are declared.
+      Field <field> declared twice....Field names must be unique.  Spaces are
+                                        not allowed in field names.
+      No fields declared before.......A relation must contain fields, and these
+        end reached                     must be declared before any indices.
+      Incorrect syntax................The definition of a field's length has
+                                        been entered incorrectly.
+      Field <field> undefined.........An index has been placed on a non-
+                                        existant field.  Check spelling.
+      No fields declared before end...The schema definition is incomplete: it
+        reached                         must contain at least one field and
+                                        one index.
+      No indices declared before.....See the above error description.
+        end reached
+      Identifier <?> not recognized...The only valid words for the beginning
+                                        of a line are "relation" or a relation-
+                                        name (as the first line), "field",
+                                        "index", and (optionally) "end".
+      Cannot open relation............The file <file.rel> cannot be written...
+                                        possible causes are a media error or
+                                        write-protection on the file.
+      Relation is busy................Relations cannot be re-built until it is
+                                        not being worked with by any users.
+      The file about to be created....If you build a relation where a relation
+        already exists                  of the same name already exists, any
+                                        data in the existing relation will be
+                                        erased in favor of the new, empty
+                                        relation.
+
+MetalBase / Errors :
+
+MetalBase routines either return necessary information (such as, mb_inc()
+returns a relation-pointer, and mb_num() the number of records in a relation),
+or 0 to indicate success.  The global variable mb_errno will be set to MB_OKAY
+(0) on success, and another error number (in the 1000's) on failure; the
+variable mb_error is a character string which will always describe the most
+recent error.  Possible errors are:
+
+        0..MB_OKAY............This is the generic no-problem return code.  All
+                                functions except mb_inc should return 0 if
+                                they have been able to function properly.
+     1001..MB_NO_ROOM.........Too many relations are open at once -- mb_inc
+                                cannot allocate enough space for the new
+                                relation.  This error can be prevented by
+                                re-defining MAX_REL, as with build's warning
+                                messages, to a value greater than its default
+                                of 5.  In addition, having many files open at
+                                once may require that you warn <stdio.h>
+                                (or config.sys, if you're using MSDOS)...
+                                consult your system manuals.
+     1002..MB_NO_MEMORY.......A malloc() has failed, and the task must be
+                                aborted.  This is a bad, bad thing to happen.
+                                How d'ya fix it?  Well, that's hard to say...
+                                look around and make sure you're free()'ing any
+                                memory you malloc().
+     1003..MB_NO_OPEN.........The file "file.rel", where "file" is the name
+                                passed to mb_inc, cannot be opened.  In all
+                                probability, it does not exist.
+     1004..MB_NO_READ.........The file <file.rel> cannot be read.  This error
+                                is returned only from mb_inc, and is probably
+                                caused by read-protection placed on the file.
+     1005..MB_FORMAT..........This is the generic this-shouldn't-have-happened
+                                error.  Check out trouble.dox for a quick
+                                explanation of what could cause it.
+     1006..MB_LOCKED..........This error is returned if another user has
+                                locked the relation you're trying to access...
+                                wait until they haven't, and you'll be fine.
+     1007..MB_BUSY............Only a certain number of users is allowed to
+                                access a relation at any given time.  The
+                                limits are:
+                                        MetalBase 3.1, 3.2.........120
+                                        MetalBase 4.0...............63
+                                        MetalBase 4.1, 4.1a, 5.0...255
+     1008..MB_BAD_REL.........This essentially means that the relation* you
+                                passed to a function was not returned by
+                                a call to mb_inc()... it's an invalid pointer.
+     1009..MB_NO_WRITE........This error is produced when the relation you've
+                                opened can't be written to... perhaps you don't
+                                have permission.
+     1010..MB_TIMEOUT.........A user has stopped a program during a record
+                                addition, deletion, or update.  These functions
+                                place temporary locks on a file, which are
+                                removed at the end of their respective
+                                procedures.  Normally other functions will
+                                simply wait for the file to be unlocked, but if
+                                the wait time becomes excessive, this error is
+                                returned and the function aborted.  Try the
+                                function again, and if you recieve this error
+                                a second time, see the section on Utilites to
+                                remove the lock manually.
+
+                                Note that this error is no longer used, as of
+                                revision 4.1.
+     1011..MB_BAD_REC.........A null pointer to a record has been received.
+                                So essentially, you've given NULL instead
+                                of &rec.  Stupid thing to do.  :(
+     1012..MB_CORRUPT.........This relation has an error on an index.  See the
+                                section on Utilites to repair it.  Try to find
+                                which index you were working with at the time
+                                of the error, in order to speed repair.
+     1013..MB_BAD_DUP.........The record that has been offered for addition/
+                                update would violate an index that has been
+                                declared not to allow duplicates.
+     1014..MB_NO_CURR.........In order to perform a delete or an update,
+                                you must have already issued mb_sel() to
+                                determine which record you wish to modify.
+                                This error indicates you have not done so.
+     1015..MB_BAD_IDX.........A bad index number has been passed to mb_sel.
+                                Valid numbers range 0 through the number of
+                                indices in a relation, minus 1.
+     1016..MB_NO_SUCH.........Generic code returned when the record described
+                                cannot be found in the relation searched.  If
+                                you feel it should have been found, check the
+                                index number, action, and comparison value used
+                                in the search.
+     1017..MB_UNKNOWN.........A very unlikely error, receipt of this code
+                                indicates you have passed a number greater than
+                                12 or less than 0 to mb_sel as an action.
+     1018..MB_NO_FIELDS.......You're trying to create a new relation without
+                                specifying any fields for it.  Stupid you.
+     1019..MB_NO_INDICES......You're trying to create a new relation without
+                                specifying any inidces for it.
+     1020..MB_BAD_INDEX.......An index you're trying to create has no fields.
+                                Remember that the format for indices being
+                                created is "nnn,nnn,nnn" --no whitespace
+                                allowed without using BUILD.
+     1021..MB_DISKFULL........This will only happen on mb_add() or when using
+                                mbconv, the 4.0+ => 5.0 conversion utility,
+                                and is returned whenever there isn't enough
+                                free space on the drive to perform the
+                                requested operation.
+     1022..MB_BAD_SERIAL......This will only happen on mb_upd(), if you've
+                                changed the serial number of the record
+                                you're trying to update.  You can't.  It won't
+                                let you.
+     1023..MB_TMPDIR..........On some systems, MetalBase requires that you
+                                have the environment variable "TMP" set to
+                                an appropriate directory for temporary files;
+                                for example, "TMP=/tmp; export TMP" or
+                                "set TMP=C:\TMP".  If you prefer, you can
+                                use the variable "TEMP" instead.
+     1024..MB_TMPERR..........MetalBase cannot work with the directory you've
+                                defined as per error #1023 (see TROUBLE.DOX).
+
+UTILITIES______________________________________________________________________
+
+    Five utilities have been released with this package; one, called blast,
+removes user- and system-placed locks on a relation and sets the number of
+users the relation thinks are using it to zero.  Impromper closing of a
+relation (ie, not closing one) will cause the number of users to build up
+until it cannot be used any longer.
+
+    The second utility included is called vr, for View Relation.  Please see
+the separate documentation under ../dox/vr.dox for its description and
+instructions for its use.
+
+    The third utility is called report... it generates reports of a relation's
+contents.  There is sparse documentation under ../dox/report.dox; it might
+help, it might not.  Play with it and it'll work--honest.  :)
+
+    The fourth, and newest utility, is called mbconv--it converts pre-5.0
+MetalBase relations to 5.0 syntax.  Note that the process is safe but
+irreversable; and your schema files may need semicolons added just to be
+complete.
+
+    And, the final utility is called "form"--it compiles data-entry templates
+into .h files your programs include for data-entry.  There's practically
+no documentation; just the one example under ../sample.  Good luck to you.
+
+    Other supporting utilities to MetalBase have not been released with this
+package, primarily because I have not bothered to write them yet.  See the
+ReadMe.Too file up one directory to see how to register yourself with me, as
+I'll write any of the following upon request once you're registered (and
+maybe before, if I have time).
+
+    Future utilities:
+
+       * Repair of bad indices and recover of unreclaimed space from
+         previous deletes
+
+       * Utility to change a relation's schema without destroying its
+         contents (oh boy...)
+
+       * Relation import/export from standard, Emailable text files.
+
+
+ENCRYPTION______________________________________________________________________
+
+    MetalBase 3.1 and up (not 3.0) automatically encrypt all files unless
+told otherwise.  When a relation is opened (using mb_inc()), an integer
+encryption-key is passed in to MetalBase.  Any records which are added to that
+relation are encrypted using this key, and any records which are retrieved are
+decrypted similarly before they are returned.  In this way, any information
+which is physically stored is encrypted beyond recognition.  As long as this
+integer key is the same every time the relation is opened, the encryption is
+totally user-transparent: records are passed to mb_inc and mb_upd in normal
+text, and are retrieved in normal text, but are stored garbled.  If the key
+changes, however, the records retreived in the second session will be decrypted
+under the new key, whereas they were encrypted under the former... and the
+output will be meaningless, for numbers and strings alike.
+
+    Note that the encryption is apparently working for ALL supported machines
+now--however, this has always been the hardest part to port between machines.
+If necessary (or if you simply want to), compile mbase.c (and vr.c/sample.c/
+whatever) with -DNOENCRYPT, and it'll be turned off.
+
+    For a more thorough explanation of MetalBase's encryption process, see the
+separate documentation crypt.dox.
+
+--
+            ___
+         .-','                                        /\
+        /  (_______.------------------.              /  \ Huan-Ti
+       (    _______|))))))))))))))))))|              \  /
+        )__(       `------------------'               \/
+       `----'                                richid@owlnet.rice.edu
+

@@ -1,0 +1,88 @@
+Report Documentation                                              MetalBase 5.0
+-------------------------------------------------------------------------------
+
+Special thanks to Bruce Momjian (root%candle.uucp@ls.com) for his input, and
+for the inspiration for this utility.  This whole this is basically a
+glorified spin-off of report.c as he sent it to me when he got MB 4.0.
+
+                                  Function
+
+Report does just that; it produces reports on data found in relations, based
+on a format decided by the user in a report template.  These templates are
+expected to have .rpt extensions and are accessed in their native form,
+without any pre-compilation.
+
+Currently, report does not allow joins; thus, each report may only access
+one relation's data.  However, note that in the templates, fields may be
+refered to either by "fieldname" or "relation.fieldname"; when further
+functionality is added, the latter will become necessary if a fieldname is
+used twice in different relations.
+
+                              Template Format
+
+The templates are processed "on the fly", and output is produced on the
+standard output, for redirection to a file, viewer, or printer as
+appropriate.  Output is performed in 3 stages (repeating as necessary), and
+the template makes use of this; an example (note that spacing is rather
+irrelevant--"data test.rel;" is equivalent to what you see below):
+
+   Data
+      test.rel;
+   Size
+      Columns      80; # 80-column page, regardless of margins
+      Rows         66; # 66-row page (standard pagesize)
+      Top Margin    4; # 4 lines for a top margin        [you don't have to
+      Left Margin   8; # 8 spaces for a left margin       include any of this
+      Bottom Margin 2; # 2 lines for a bottom margin      you don't want--they
+      Right Margin  3; # 3 spaces for a bottom margin     all have defaults]
+
+   Page 5;  # Make the first page, page number 5.  Why?  Have no idea.  :)
+
+   Header
+      print centered  : "test -- ages under 30";
+      print centered  : system        # This just gives me some credits. :)
+      skip 1 line
+      print continued : system!date format 1, system!time format 1;
+      print right     : "Page: ", system!page;
+   Continue
+      print centered  : "-Continued-";
+   On ix_age < 30
+      print           : name to 40, age, hobby;
+
+   Header
+      print centered  : "test -- ages over 30";
+      print centered  : system
+      skip 1 line
+      print continued : system!date format 1, system!time format 1;
+      print right     : "Page: ", system!page;
+   On ix_age >= 30
+      print           : name to 40, age, hobby;
+   Last
+      print centered  : "---";
+      print centered  : "Average age of all : ", age!rpt_avg;
+
+Note that Last and Footer sections should have the same number of lines; else,
+the Last section will be assumed to have the same # as the Footer section, and
+you may end up with slightly skewed paper-alignment.  Hey--it's shareware.
+
+The "On" line indicates that the following instructions (between "On" and
+the next keyword; in this case, "Last") should be executed for each record
+where the first field referenced by ix_age (age, in this case) is greater than
+or equal to thirty; thus, the following operation like the following is
+performed:
+
+   for ( mb_sel (rel, idxnum(rel,"ix_age"), &rec, GTEQ, &[30]) ;
+         mb_errno == MB_OKAY;
+         mb_sel (rel, idxnum(rel,"ix_age"), &rec, NEXT, NULL) )
+      {
+        print  : name to 40, age, hobby;
+      }
+
+Well, that's basically it.  Right now, the "age!rpt_avg" won't work--I
+haven't written it.  But, if there's enough demand...
+
+Good luck.
+
+PS--If your relation is encrypted, say with the key "test", try:
+   report -k test sample
+

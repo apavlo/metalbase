@@ -1,0 +1,62 @@
+C-Structure Interface                                             MetalBase 5.0
+-------------------------------------------------------------------------------
+
+MetalBase 4.0 and up read and write database information directly from C
+structures, using the following assumptions:
+
+            sizeof(long)   = sizeof(ulong)  = 4 bytes
+            sizeof(short)  = sizeof(ushort) = 2 bytes
+            sizeof(float)  = 4 bytes
+            sizeof(double) = 8 bytes
+
+If any of the above are not valid for your system, MetalBase 5.0 will not work
+properly; however, this is the defacto standard, and should produce little
+difficulty in porting.  So far, I have yet to receive even one complaint that
+this assumption has limited a user's use of this package (one Mac user had
+to change the defaults for his compiler from a 12-byte double to an 8-byte,
+but it worked fine after that).
+
+The main problem between machines is therefore not type sizes, but byte-
+aligning in C structures.  At first, one would expect that the following:
+   struct
+    { char   A[3];
+      long   B;
+      char   C[5];
+      char   D[5];
+      double E;
+      char   F[2];
+    }
+would appear like this in memory:
+      AAABBBBCCCCCDDDDDEEEEEEEEFF
+Unfortunately, this is not the case for most systems.  On this machine
+(Sun4 SunOs/cc), structures are aligned comme ca:
+      AAAxBBBBCCCCCDDDDDxxxxxxEEEEEEEEFFxxxxxx
+While Xenix 2.3.2 would align them as:
+      AAAxBBBBCCCCCDDDDDxxEEEEEEEEFF
+Why?  Because, for the Sun, each field is aligned on 4- or 8- byte boundaries,
+depending on size; shorts, longs and floats to 4-byte boundaries, and doubles
+to 8-byte ones.  Essentially, the algorithm is:
+
+      start_pos = &base_of_structure;
+      for (each field)
+       { if (type != char)
+            if (sizeof (type) < 8)  align_to_4_byte_boundary (start_pos);
+            else                    align_to_8_byte_boundary (start_pos);
+         add_field
+       }
+      align_to_8_byte_boundary
+
+The last alignment is to obtain the structure size.
+
+All this crap was discovered through trial and error (yick!)  If anyone
+encounters a structure which does not seem to meet the standards shown
+by struct.c, please contact me (virtual!richid@owlnet.rice.edu) and describe
+the structure and your machine type.  If you decide to make any necessary
+modifications yourself, you'll find the above algorithm (in essentially that
+form) in the routine _fill_info() [mbase.c]--but let me know if you get it
+working, so I can add machine-dependency to the code with #defines.
+
+Currently, there are 4 different version supported, as shown by "make struct".
+In general, these conform to Sun, Coherent/Zortec, Xenix, and Mac/Microsoft C
+respectively (definitely not an exhaustive list of compatibility there).
+

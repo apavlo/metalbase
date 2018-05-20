@@ -1,0 +1,36 @@
+#
+# METALBASE 5.0
+#
+# Released October 1st, 1992 by Huan-Ti [ virtual!root@owlnet.rice.edu ]
+#                                       [ t-richj@microsoft.com ]
+#
+
+Data sample;
+
+Size
+   Rows       23;  # Make the report screen-size (default is page-size)
+   Top Margin  0;  #
+   Bottom      0;  # And get rid of most margins.  This _is_ going to a screen,
+   Left        4;  # most likely.  :)
+   Right       8;
+
+Footer Keep
+   print centered  : "-continued-";
+Last
+   print centered  : "-end of report-";
+
+Header
+   print centered  : system;
+   print continued : system!date, system!time format 1;
+   print right     : "Page", system!page;
+   skip 1 line;
+   print continued : "Customer Name" to 23, "Number" to 30, "Balance";
+   print           : column 40, "Date Entered", column 60, "Credit";
+   print continued : "-------------" to 23, "------" to 30, "-------";
+   print           : column 40, "------------", column 60, "------";
+
+On ix_name
+   print continued : custname to 25, custnum to 30, balance using "$%7.2f";
+   print continued : column 40, date_en, time_en format 1, column 63, credit;
+   print : phone;
+

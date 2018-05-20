@@ -1,0 +1,44 @@
+The makefiles under this directory are (if it's possible) even harder to
+deal with than in ../src --but I guarantee it's all compilable.  :)
+
+Eventually.
+
+There are two primary toys under here, sample and bench.  Sample is really
+just there for example code; it happens to work, which is nice, but it's
+not doing its intended job unless you look under the hood.  So have at it;
+it's ugly code (amazing how you can always look back and say, "God, I
+can't believe I wrote THAT", isn't it?), but, as I said, it does work.
+                          ^^
+                          Note that I didn't put the comma inside the
+                          quotes.  I think that looks really stupid; it's
+                          not part of the quote.  New standard.  Anyone
+                          wanna draw up a petition?
+
+Bench is a benchmark utility.  Run it without any arguments and it'll proceed
+to add 790 very simple records, one after another, to bench.rel--each '.' it
+prints represents 10.  Then it'll draw a pretty graph that looks like a plot
+of any O(n * ln(n)) function (for 5.0 anyway--try it with 4.1a and it looks
+pretty!  All kindsa lumps and valleys...) and tell you what the average add
+time is for all 790 records.  Some typical numbers, with the cache at 500
+(as shipped):
+
+                                      Average time per add,  Multiple that
+ Machine   Software                   Versions 5.0 vs 4.1a   it's faster by
+ --------  -------------------------  ---------------------  --------------
+ NeXT      Non-turbo, 25Mhz            .27 sec vs  ???? sec      x ????
+ Sparc 1+  SunOS 4.1 (zzzooooom!!!)    .37 sec vs  1.16 sec      x 3.13
+ 386/25dx  Dos 5, SMARTDRV, DublDisk  1.15 sec vs  3.17 sec      x 2.75
+ 386/16sx  Xenix of some sort         1.27 sec vs  2.67 sec      x 2.10
+
+So basically, the faster your processor, the better 5.0 beats the crap out of
+4.1a... just what you'd expect, 'cause its primary change is that all tree
+balancing is done cached.  Beware, though; 790 records at even 1 sec per add
+is just over 13 minutes; this benchmark will take a bit of time to run.  If you
+change the cache size in the library it'll change the results a good bit; play
+with MAX_CACHE in mbase.h and see.  Optimally you'd want MAX_CACHE to be
+exactly as big as the number of records you intend to store; more than that
+would never be used, less than that and it flushes too often.  If you cut the
+number of records added by the benchmark to around 520, you may be able to see
+a bit of a peak in the plot where the cache size is...  if you have no more of
+a life than I do, you may wanna give it a whirl.  :|
+

@@ -1,0 +1,43 @@
+#
+#  METALBASE 5.0
+#
+#  Released October 1st, 1992 by Huan-Ti [ richid@owlnet.rice.edu ]
+#                                        [ t-richj@microsoft.com ]
+#
+#  Makefile for demonstration program  -- Microsoft C6 expected
+#
+#
+#  If mbase.h and stdinc.h aren't in \include, put them there or add
+#  -Idirectory to CFLAGS=.
+
+CFLAGS = -nologo -c -W3 -AL -DNEED_USHORT -DNEED_ULONG
+
+CC     = CL $(CFLAGS)
+
+###############################################################################
+
+all : sample.exe bench.exe
+
+
+bench.exe : bench.obj
+	link/nologo bench.obj, bench.exe,, mbase.lib lcurses;
+
+bench.obj : bench.c bench.h
+	$(CC) $*.c
+
+bench.h : bench.s
+	.\build -qh bench.s
+
+
+sample.exe : sample.obj
+	link/nologo sample.obj, sample.exe,, mbase.lib lcurses;
+
+sample.obj : sample.c sample.h sample_f.h
+	$(CC) $*.c
+
+sample.h : sample.s
+	.\build -qh sample.s
+
+sample_f.h : sample.frm
+	.\form sample
+

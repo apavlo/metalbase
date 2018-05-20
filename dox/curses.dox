@@ -1,0 +1,30 @@
+Curses                                                            MetalBase 5.0
+-------------------------------------------------------------------------------
+
+                                   Curses
+
+VR and SAMPLE require a curses package to run; MS-DOS users can get a public
+domain curses package for VR and SAMPLE via anonymous ftp from
+
+   archive.umich.edu     as   /msdos/screen/pccurses.arc
+   wuarchive.wustl.edu   as   /systems/msdos/umich.edu/screen/pccurses.arc
+
+if you cannot reach either domain, contact me and I'll forward my copy to you.
+These people have no idea I'm using their address, so do be kind to the sites
+and don't call until it's late local time.  The package is rather nice; a bit
+of a bitch to set up initially, but it's a good implementation of curses. Only
+thing I've had a problem with is its standout()/standend() commands; they
+don't work right for me.  Better luck to you.
+
+ [  If you get the package from wolfen, you may need to change <alloc.h>     ]
+ [  to <malloc.h> in curses.h... for some god-forsaken reason, they use      ]
+ [  the old name for the thing.  The package comes with sources as well as   ]
+ [  Xcurses.lib, for every model, but DON'T USE THE PRE-BUILD LIBRARIES!     ]
+ [  Recompile 'em first or you'll get a problem with "@F_LDIV is undefined". ]
+ [  Nasty.  I don't know -what- compiler they were made with... if you can   ]
+ [  find out, lemme know.                                                    ]
+
+If you're using MS-DOS to access a Unix-style server, ANSI.SYS may not cut
+it for you.  Try replacing it with VT52.SYS and using term type vt52 on your
+unix platform; that may help.
+

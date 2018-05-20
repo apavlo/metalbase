@@ -1,0 +1,21 @@
+
+This my fixed version of metalbase 0.5.
+It is intended to be used under Linux with the ncurses library.
+The bsd curses that comes with Linux is no good. 
+If you don't have ncurses you can get the latest sources from
+	netcom.com:pub/zmbenhal
+The current version is 0.7.2 and should be available from
+tsx-11.mit.edu:pub/linux/sources/libs
+sunsite.unc.edu:pub/Linux/libs
+-----------------------------------------------------------------
+The distribution extracts in a directory called mbase.
+cd to mbase/src and type make.
+You build a database using 'build <schema>'
+You can interactively add, modify, view data using 'vr <schema>'
+There are a couple of examples in .../sample including a schema
+for the LSM project.
+
+If you have any questions, suggestions, fixes, or flames you can
+post to c.o.l or email me zmbenhal@netcom.com
+
+Zeyd M. Ben-Halim	May 21, 1993

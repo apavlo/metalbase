@@ -1,0 +1,107 @@
+#
+#  METALBASE 5.0
+#
+#  Released October 1st, 1992 by Huan-Ti [ richid@owlnet.rice.edu ]
+#                                        [ t-richj@microsoft.com ]
+#
+#  Microsoft C6 makefile (for use with NMAKE) for 5.0 library and utilities
+#
+###############################################################################
+#
+# CFLAGS=
+#    -DSTRUCT_1      -- Read lower for an explanation of these, and how to
+#    -DSTRUCT_2      --    determine which is appropriate for your system.
+#    -DSTRUCT_3
+#    -DSTRUCT_4
+#    -DLONGARGS      -- To produce ansi-style prototypes ("void fn(int)")
+#    -DNOVOIDPTR     -- To use char* instead of void* (automatic for COHERENT)
+#    -DNOENCRYPT     -- To remove encryption crap from library and utilities
+#    -DNEED_USHORT   -- If your compiler doesn't have ushort yet (COH again)
+#    -DNEED_ULONG    -- If your compiler doesn't have ulong yet (most don't)
+#    -DUNIX_LOCKS    -- To enable Unix-style locking
+#    -DSIG_TYPE=void -- void or int; needed only if you define UNIX_LOCKS
+#    -DVI_EMU        -- To add vi emulation to input.c
+#    -DMSDOS         -- MS-DOS users should define this if their CC doesn't.
+#
+# LDOPTS=-f          -- To include floating point stuff for printf()
+#
+###############################################################################
+#
+# All users: Update the flags just below here FIRST (don't worry about
+#            setting -DSTRUCT_?); then just type "make".  It will compile and
+#            run struct/struct.exe, which will tell you how to determine how
+#            -DSTRUCT_? should be set for your system.  Update this in the
+#            Makefile and type "make install".  You may delete struct/
+#            struct.exe after you've used it.
+#
+# DOS users: Try adding -DMSDOS to CFLAGS=; if you get a compiler error,
+#            take it back out.  The code expects MSDOS to be defined for all
+#            DOS compilers--most already set it, but some may not.
+#
+# NOTE: This makefile is set up to use \INCLUDE, \LIB and \UTIL... change the
+#       names in here or create those directories, as you see fit.
+#
+###############################################################################
+
+CFLAGS = -nologo -c -W3 -AL -DSTRUCT_4 -DNEED_USHORT -DNEED_ULONG
+
+CC     = CL $(CFLAGS)
+
+.C.OBJ:
+	$(CC) $*.c
+
+###############################################################################
+
+struct.exe : struct.obj
+	@link /nologo struct.obj, struct.exe;
+	@.\struct
+	@echo Now update the Makefile and 'make install'
+
+all : \INCLUDE\stdinc.h \INCLUDE\mbase.h blast.exe build.exe form.exe \
+      mbconv.exe report.exe vr.exe
+	
+
+install : final
+	@echo MetalBase 5.0 has been installed.
+
+###############################################################################
+
+\INCLUDE\mbase.h : mbase.h
+	copy mbase.h \INCLUDE
+
+\INCLUDE\stdinc.h : stdinc.h
+	copy stdinc.h \INCLUDE
+
+\LIB\mbase.lib : mbase.lib
+	copy mbase.lib \LIB
+
+final : all
+	copy *.exe \UTIL
+
+###############################################################################
+
+blast.exe   : blast.obj
+	link/nologo blast.obj, blast.exe;
+
+build.exe   : build.obj \LIB\mbase.lib
+	link/nologo build.obj, build.exe,, mbase.lib;
+
+form.exe    : form.obj form_wr.obj \LIB\mbase.lib
+	link/nologo form.obj form_wr.obj, form.exe,, mbase.lib;
+
+mbconv.exe  : mbconv.obj \LIB\mbase.lib
+	link/nologo mbconv.obj, mbconv.exe,, mbase.lib;
+
+report.exe  : report.obj \LIB\mbase.lib
+	link/nologo report.obj, report.exe,, mbase.lib;
+
+vr.exe      : vr.obj \LIB\mbase.lib
+	link/nologo vr.obj, vr.exe,, mbase.lib lcurses.lib;
+
+mbase.lib : entry.obj    lock.obj  input.obj mbase.obj parse.obj \
+            timedate.obj util1.obj util2.obj cache.obj cache.obj \
+	    create.obj
+	lib mbase.lib -+entry.obj  -+parse.obj -+input.obj -+mbase.obj;
+	lib mbase.lib -+util1.obj  -+cache.obj -+util2.obj -+lock.obj;
+	lib mbase.lib -+create.obj -+timedate.obj;
+

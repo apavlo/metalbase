@@ -1,0 +1,145 @@
+Troubleshooting Hints                                             MetalBase 5.0
+-------------------------------------------------------------------------------
+
+Can't compile
+ - There are several options you can add to or remove from CFLAGS= in your
+   makefile.  stdinc.h will look at several compiler-generated settings to
+   determine your system type and choose defaults, but they may need to be
+   modified... standard machine definitions are:
+         -DAMIGA      - Amiga
+         -DNeXT       - NeXT
+         -DCOHERENT   - COHERENT
+         -DMSDOS      - Any MS-DOS compiler
+         -Dapplec     - Mac Programmer's Workshop
+         -Dsgi        - SGI
+         -DM_SYS3     - Xenix
+         -DM_SYS5     - Xenix
+         -DM_7        - Xenix
+   If you have a machine on the right, try adding the thing on the left to
+   CFLAGS and recompiling.  If that doesn't help, read on:
+
+   There are several definitions which define how the code will be set up...
+   of them, -DSTRUCT_# isn't necessary unless you're compiling the library
+   itself:
+
+      -STRUCT_#........MetalBase uses this to determine which structure-packing
+                       algorithm you're using; run STRUCT or STRUCT.EXE to find
+                       out.  It'll tell you what to do with this.
+
+      -DLONGARGS.......If your machine screams about your prototypes, this may
+                       be the problem.  If you don't define this, odds are the
+                       prototypes MBASE will define will look like
+                             void main ();
+                       Define it, and you'll get
+                             void main (int, char **);
+
+      -DSYS_FCNTL......If <fcntl.h> can't be found, try defining this--it'll
+                       move the search to <sys/fcntl.h>
+
+      -DCHAR_IS_UNS....Most compilers define this if the default character type
+                       is unsigned; some may not.  Try this if you suspect a
+                       problem.
+
+      -DNEED_ULONG.....Most machines don't have the type "ulong"; some do.  Try
+                       adding this if your compile freaks because of ulongs.
+
+      -DNEED_USHORT....Parallel to "ulong"; this makes a typedef for ushort.
+
+      -DNOVOIDPTR......Many older compilers still don't recognize "void *x;" as
+                       a valid instruction--define this to change those kind of
+                       declaration to "char *x;".
+
+      -DNON_ANSI.......If you're not using VT emulation (ANSI.SYS counts as VT
+                       emulation; Amiga users have it built in to AmigaDOS),
+                       define this.  Just makes Build a little prettier.
+
+      -DNOSYNC.........A few machines don't have fsync() or sync()--if you get
+                       either as an unresolved external, add this.  MS-DOS
+                       users: By default, stdinc.h tries some inline assembly.
+                       If you're not running MB programs under windows, just
+                       define this and it won't... otherwise, you may want to
+                       try to get that translated to whatever works for you.
+
+MB_BUSY (Relation is too busy--if returned by a call other than mb_inc())
+ - Only thirty operations may be processed simultaneously--and this was
+   number thirty one.  Try again in a second or two.
+
+MB_BUSY (Relation is too busy--if returned by mb_inc()) or
+MB_LOCKED (Relation is locked by another user)
+ - If you're stuck by one of these, try the utility blast -- it erases the
+   record of the number of users on a relation.  But the cause is still there:
+   you may want to check your programs to make sure each terminates with
+   mb_die() [ MBCloseAllRelations() ] or mb_exit(), or just mb_rmv()'ing all
+   the relations you've used... if a relation isn't closed properly, its count
+   will increase each time you use the thing, until it's got 255 users and won't
+   let you add any more.  Then, you've gotta blast it.
+
+MB_NO_OPEN (Cannot open given filename) or
+MB_NO_READ (Cannot read given filename)
+ - MetalBase does not use any evironment variables to check for possible
+   directories for relations; it expects a full pathname if one is required.
+   MB_NO_OPEN usually means the file can't be found; while MB_NO_READ means
+   mb_inc() can't read the initial signature at all from the relation--possibly
+   permissions, or a 0-length file.
+
+MB_FORMAT (Relation is not in MetalBase 4.0+ format)
+ - Gods.  Good luck.  This is caused if
+    a) the initial signature (see format.dox) isn't (char)40 or (char)41, or
+    b) the fields in the relation don't make sense, or
+    c) the indices....
+   basically, this is your generic "THIS SHOULDN'T HAVE HAPPENED!!!" error.
+   If you get it, make _sure_ you're opening the right file, for starters:
+   always pass mb_inc() the name of the file WITHOUT the extension.  I don't
+   trust the extension bit...
+
+MB_TIMEOUT (Temporary lock has not been removed)
+ - MetalBase sets temporary locks on relations during add/delete/update/search
+   operations--when a temporary lock has been placed on a relation, other
+   commands wait for a set amount of time for the relation to be unlocked--
+   this process is normally transparent to the user.  Though these waiting
+   periods are kept as small as possible (obviously), under very peculiar
+   situations, a program may be interrupted while a lock is still in place.
+   On other occasions, two commands may have been issued nearly simultaneously,
+   and the lock will be almost ready to remove when the second command gives
+   up.  If you receive this error, you should try your command again--failing
+   that, execute mb_rst(1) or use blast to remove the temporary lock.
+
+MB_DISKFULL (Not enough disk space left)
+ - mbconv requires again as much free space as the size of the relatation being
+   converted; if you don't have that much, it'll stop the conversion.  Note
+   that no check is made for enough free space before conversion so make sure
+   yourself before you start, or 10 minutes into its work it may stop with this
+   error.
+
+MB_TMPDIR (You must define a TMP directory)
+ - On some systems, MetalBase requires that you have the environment variable
+   TMP set to an appropriate directory for temporary files; for example,
+      TMP=/tmp; export TMP
+   or
+      set TMP=C:\TMP
+   If you prefer, you can use the variable "TEMP" instead.
+
+MB_TMPERR (Cannot work with TMP directory)
+ - In order to control concurrency problems, MetalBase 5.0 uses a rather
+   complex system of locking, which involves many busy loops of ReadByte,
+   CheckByte, ReadByte and so on.  That kind of work really, really slows
+   down access to a relation, so the locking mechanism has been moved off
+   to a separate file.  This file is named after the relation, with the
+   extension replaced with ".LCK", and is placed in the temporary directory
+   given as per MB_TMPDIR (explained right above this).  This file is
+   created every time mb_inc() is called, if it does not already exist...
+   if it cannot be created, or opened for read/write access, this error
+   is returned.  Try moving the temporary directory to another location.
+
+Too many relations--see trouble.dox
+Too many fields--see trouble.dox
+ - Form has two manifest constants, MAXnREL and MAXnFLD.  These are defined
+   for 5.0 to be 20 and 40 respectively; if you have more than 20 relations
+   in a given data-entry template, add -DMAXnREL=30, etc, to CFLAGS in the
+   Makefile and recompile.
+
+Report doesn't quite look like the template
+ - Check your semicolons.  Every print statement, every skip statement;
+   hell, most statements, will freak if they don't end in a semicolon, and
+   different systems freak in different ways.  :)
+

@@ -1,0 +1,97 @@
+VR -- View Relation                                               MetalBase 5.0
+-------------------------------------------------------------------------------
+
+                                   Curses
+
+     Take a look at curses.dox if you're using MS-DOS and don't have curses.
+
+                                  Functions
+
+VR is utility which allows visual querying and modification of the records
+in any relation.  I'll be honest here--I modeled it directly after Informix'
+enter2 command... not a bad port, if I do say so, seeing as I have no idea
+how they did theirs.  So thanks for the idea, Informix; you know, imitation is
+the sincerest form of flattery...
+
+The command-line format is trivial:
+    % vr [relationname[.rel]]
+If not compiled with -DNOENCRYPT, vr will ask for an encryption password after
+every time a relation is specified; on the command line, or with the 'Rel'
+option from the main menu.  This password is hashed using the standard
+strtokey() function in MetalBase, and is used to open the relation.  If a
+relation is specified on the command line which cannot be opened, vr will
+return to the command line after indicating the error.  Once at the main
+menu, though, vr will not exit until you tell it to; errors instead appear on
+the bottom line of the display, highlighted (nifty, eh?).
+
+The various functions performed by vr are:
+
+First  -- Find the first record in the given relation, on the current index.
+          When a relation is first opened, the current index is set to the
+          first specified in the schema; afterwards, it may be selected using
+          the 'Idx' option, described below.
+Last   -- Find the last record in the relation, following the current index.
+Next   -- Find the next record sequentially.  If no current record is selected
+          (the fields shown will all be blank or 0), this function acts as if
+          you had selected 'First'.
+Prev   -- Find the previous record sequentially.  If no current record is
+          selected, this function acts as if you had selected 'Last'.
+Gteq   -- Find the record which is greater than or equal to a specified record,
+          alphabetically/numerically (whichever is appropriate for each field).
+          When you select Gteq or Equ (described below), all fields will
+          disappear from the display other than those used by the current
+          index; these will appear in the order in which they are used by the
+          index.  Enter as many as you like, starting with the first
+          (naturally); when you hit accept the transaction (movement is
+          described later), it will search for the appropriate record and, if
+          found, display it.
+Equ    -- Similar to Gteq, Equ will accept only a record which is exactly equal
+          to that specified for the relevant fields; if one is not found, the
+          query fails.
+Idx    -- Selecting Idx will allow you to change which index is currently being
+          used to search.  A list will appear for you of valid indices and
+          their order; you may enter either their name or number.
+Screen -- If a relation has more than 18 fields, they will not all fit on the
+          display at once; selecting 'screen' will toggle which set of 18
+          is displayed.
+Add    -- 'Add' allows you, obviously enough, to add a new record to the
+          relation.
+Upd    -- Similarly, 'Upd' allows you to update the current record.
+Del    -- And, 'Del' deletes the current record.  After the record has been
+          deleted, the record will disappear and you'll have to make another
+          query.
+Rel    -- 'Rel' allows you to open a new relation.
+
+                               Standard Keys
+
+Other than movement keys, the following are accepted:
+   Ctrl-A  : Accept data-entry--same as ":w" or ":x" if in vi-emulation mode.
+   Ctrl-C  : Abort data-entry.
+   Ctrl-Q  : Abort data-entry.
+   Ctrl-U  : Undo any changes (to this field only)
+   PgUp    : Works like an up-arrow
+   PgDn    : Works like an down-arrow
+   Del     : Works like a backspace
+
+The arrow keys work just dandy in *nix, or if you're using the same curses
+package I am... don't know about any others.
+
+                                  Movement
+
+Users who are not familiar with the editor vi will probably wish NOT to compile
+vr with -DVI_EMU; if this isn't present, it removes some of the input routine's
+editing and movement commands, but allows the user to enter text in a more
+intuitive manner.
+
+Arrow keys operate as expected; vi'ers, you may ARROW _past_ the end of a line
+of text, whereas space and 'l' will not let you (in keeping with vi's
+conventions).  Others, you are in perpetual insert, with backspace and DEL
+always destructive, and left-arrow not (unless in VI-emulation).
+
+Vi'ers, there are some extra ways to exit a template entry: normally, you
+may only accept a transaction, and then, only by hitting return on the last
+field in the set.  Without VI you can abort a transaction by hitting ESC
+twice; you may want to hit it 3 times, just to make it catch the second
+more quickly; with vi, typing :q (no return) will abort a transaction, and :w
+or :x will accept it, from any point.
+

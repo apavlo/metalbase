@@ -1,0 +1,67 @@
+Encryption Method                                                 MetalBase 5.0
+-------------------------------------------------------------------------------
+
+  -- Note: This information is provided for your information alone, and --
+  -- is sufficient to crack the (rather simple) encryption method.  If  --
+  --  you are going to be encrypting sensitive data, please delete or   --
+  --               change the permissions on this file.                 --
+
+Note that the encryption is apparently working for ALL supported machines
+now--however, this has always been the hardest part to port between machines.
+If necessary (or if you simply want to), compile mbase.c (and vr.c/sample.c/
+whatever) with -DNOENCRYPT, and it'll be turned off.
+
+-------------------------------------------------------------------------------
+
+If the user has specifed a nonzero key when calling mb_inc(), the following
+encryption operations take place at any necessary time before the next call
+to mb_rmv():
+ o  All records to be written are encrypted on a field-by-field basis
+ o  Records being read for return to the user are decrypted
+ o  Records being compared during an internal search are decrypted as needed
+
+In this way, as long as mb_inc() is always called with the same key, programs
+will never see any effect of encryption--records passed to MetalBase routines
+are not encrypted by the user, and records returned from these routines are
+already decrypted.  However, the relation's data will be unintelligible if
+viewed using either an external file display utility or MetalBase routines
+which have not passed the proper key to mb_inc().
+
+The key used for encryption is passed as an integer argument to mb_inc(),
+along with the relation name which is to be opened.  If this key is 0, no
+encryption will take place for that session (note that already-encrypted
+information will not be decrypted without the proper key--passing 0 is simply
+an alternative to encrypting the relation in the first place).  To facilitate
+matters, MetalBase 4.0 and up include the routine strtokey() to convert a text
+string to a key for mb_inc().
+
+Encryption is performed as follows:
+ o During mb_inc(), the key passed in is converted to an 8-bit mask by
+     shuffling the bits around:
+        Bits 12345678  become bits  63417825
+   Okay, so it's not really useful.  So it places limits on portability, and
+   is generally ugly.  But hey--I always wanted an excuse to do some good
+   bit-shuffling...
+
+ o When a record is encrypted or decrypted, each field is handled
+     individually.  This is because MB 4.0 originally used a memoried
+     encryption method; i.e., a byte's mask was dependent on that of the byte
+     before it.  Portability problems with uchars made a change to it before
+     the original 4.0 release, but the style is still the same.  In the
+     interests of speed, it is necessary to decrypt only indexed fields
+     during an internal search; thus, each field must be a starting point for
+     the algorithm.
+   To encrypt a field consisting of N bytes (be they for longs, strings,
+     or whatever):
+
+     mask = relation.mask; (set by MetalBase during mb_inc())
+
+     if (mask)
+        for (i=0; i<N; i++)
+         {
+           byte[i] ^= mask;
+           mask     = (mask+1) & (int)0xFF;
+         }
+
+   Decryption uses the exact same routine.
+

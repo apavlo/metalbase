@@ -1,0 +1,103 @@
+Relation Format                                                   MetalBase 5.0
+-------------------------------------------------------------------------------
+
+              Number   Enum Name    Storage    Typedef From
+              ------  -----------  ---------  --------------
+                 0.....T_CHAR.......char []....
+                 1.....T_SHORT......short......
+                 2.....T_USHORT.....ushort.....unsigned short
+                 3.....T_LONG.......long.......
+                 4.....T_ULONG......ulong......unsigned long
+                 5.....T_FLOAT......float......
+                 6.....T_DOUBLE.....double.....
+                 7.....T_MONEY......double.....
+                 8.....T_TIME.......mb_time....long
+                 9.....T_DATE.......mb_date....long
+                10.....T_SERIAL.....long.......
+                11.....T_PHONE......mb_phone...char[20]
+
+
+FIELD DESCRIPTIONS ------------------------------------------------------------
+
+
+Bits in time field:
+   00000000 hhhhhmmm mmmsssss suuuuuuu --h=hour,m=min,s=sec,u=microseconds
+
+Bits in date field:
+   00000000 00yyyyyy yyyyyyym mmmddddd --y=year,m=month,d=day
+
+Money:
+   Money is treated exactly as double, but is rounded to 2 decimal places
+   before being written.
+
+Serial:
+   Serial fields are automatically filled before an 'add' instruction (not
+   before updates), by the system--the number starts with 0 (unless specified
+   otherwise in the schema) and increments on each successive add.  It never
+   decrements (even if a record is deleted), nor is the same number ever used
+   twice.
+
+Phone:
+   Phone number fields are stored as pure text; there's only a special field
+   because scn_phone() and fmt_phone() are there, and it's awfully convenient.
+
+
+RELATION FORMAT ---------------------------------------------------------------
+
+
+Pos  #/Bytes   Description
+
+  0   1.......(char)50 : 5.0 signature
+  1   1.......Unused in MB 5.0 (was number of users on the system, 0 == none)
+  2   2.......Unused in MB 5.0 (was PID of temporary lock, 0 == none)
+  4   2.......Unused in MB 5.0 (was PID of exclusive lock, 0 == none)
+  6   4.......Pointer to fields' decriptions  => :A
+ 10   4.......Pointer to indices' decriptions => :B
+ 14   4.......Pointer to record 0             => :C
+ 18   4.......Number of records
+ 22   4.......Next serial field value
+ 26   2.......Number of fields
+ 28   2.......Number of indices
+ 30   4*I.....Pointers to index-heading records (top rcd in each tree)
+ A:   var*F...Fields' descriptions:
+                 byte    0 : Type (0-10, as listed above)
+                 bytes 1-2 : Size (short/ used only for char fields)
+                 bytes 3-? : Name (max len = 20, terminated by '|')
+ B:   var*I...Indices' descriptions:
+                 byte    0 : Type (0-1, 0==nodups, 1==dups)
+                 bytes   1 : Number of fields in this index
+                 bytes 2-? : Name (max len = 20, terminated by ':')
+                       --- : Each field's sequential # (as short, 0-based)
+      1.......Separator ('\n')
+
+ ?:   128.....Unused in 5.0 (reserved space for later MB versions)
+                (at runtime, this position is pointed to by {rel->hack})
+
+ C:   var*R...Records:
+                 13 bytes for each index: Index information
+                    Bytes  0-3 : Left-child (record #)
+                    Bytes  4-7 : Right-child (record #)
+                    Bytes 8-11 : Parent (record #)
+                    Byte    12 : Balance (';'=-2 '<'=-1 '='=0 '>'=1 '?'=2)
+                 recsize bytes: Record information (no field separators)
+                 1 byte separator ('\n')
+
+
+LOCKFILE FORMAT ---------------------------------------------------------------
+
+
+There is exactly one lockfile for each relation, kept in a common temporary
+directory.  You can delete the lockfile at any time, as long as you're sure
+there is no one using the relation at the time (this would be a Bad Thing to
+delete if the relation is in use).  Deleting the lockfile will erase any
+remaining exclusive lock, and reset the number of users on the relation to
+zero.
+
+Pos  #/Bytes   Description
+
+  0   2.......Number of users on relation, 0 == none
+  2   2.......PID of exclusive lock, 0 == none
+  4   6.......Three hacklock PIDs (see lock.dox)
+ 10  60.......Thirty temporary-lock queue positions (see lock.dox)
+ 70  30.......Thirty temporary-lock strobes (see lock.dox)
+

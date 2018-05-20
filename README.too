@@ -1,0 +1,84 @@
+Donateware                                                        MetalBase 5.0
+-------------------------------------------------------------------------------
+
+    Hiya.  This is the part where I whine about how our country's going down
+the tubes and it's probably because no one ever pays for shareware anymore.
+
+    I have designed and written all the versions of MetalBase.  The database
+engine itself is of my own design and implementation, though there are several
+people to whom I am indebted for input and testing of the engine, and
+suggestions for development of supporting utilites:
+
+John Steele       -- jsteele@netcom.netcom.com        -- Beta Testing / Input
+Larry A Keber     -- lak@world.std.com                -- Beta Testing / Input
+Marlin Sheffield  -- marlin@thelink.rn.com            -- Beta Testing / Input
+Warlock           -- warlock@coco.ca.rop.edu          -- Beta Testing / Input
+Mike Cuddy        -- mcuddy@fensende.Rational.COM     -- Miscellaneous ideas
+Bruce Momjian     -- jabber!candle!root@dsinc.dsi.com -- Reporting
+Adrian Corston    -- adrian@internode.com.au          -- Data-entry
+Robert S          -- roseg@taurus.bitnet              -- 4.1a *nix file locking
+
+    I learned most of what I know of programming (such as it is) through
+examples from various people, which were distributed freely.  As such, I feel
+it's only right for me to try to contribute this, the only thing I can think
+of which anyone might want, to the public.  I would therefore like to
+distribute this freely and without restriction.
+    HOWEVER, I'm also dead broke... so, I'm releasing this as shareware.  The
+conditions are a little unusual, though... hummm.  Not really shareware.  Let's
+call it donateware:
+
+  * Don't send any money at all -unless- you truly feel it's worth it.  I think
+    this is a useful enough package that it should be made more freely
+    available, and don't wanna limit propogation by putting "send money to
+    me!" labels on everything.  If you like it, though, and wanna send $$ to
+    me, I'm certainly not going to complain.  I've made a few hundred off of
+    all my releases of MetalBase total, over several years... and 4.0 alone is
+    installed at hundreds of sites literally around the globe (just how many
+    internet users ARE there in Australia?).  So don't feel compelled at all.
+
+  * Give it to as many people as possible.  I mean it--if you like the
+    distribution, put it up on a local board or ftp site, or post it to a
+    group.  It's so hard to get good distribution these days...
+
+  * Tell me about any bugs you find (God forbid -- you wouldn't _believe_ how
+    many tests this thing has been through).  This works really well; I still
+    do support for all MB stuff, and often end up debugging other code.  It's
+    fine by me, so if you can track me down, lemme know what you've run up
+    against.
+
+  * Leave the existing documentation intact.  Add more if you'd like, but leave
+    what's already there.  Feel free to add sample programs and relations if
+    you like--they always help.
+
+  * Leave the credits.  I'm vain and I'm poor, and the publicity for me might
+    do me good; if not for my wallet, at least for my ego.
+
+  * Send any modifications to the enclosed code to me.  More importantly, SEND
+    IDEAS!  If you'd like an improvement, tell me about it!  Whether or not you
+    modify the code yourself, I'd like to know what's being done to it.  Most
+    of the additions to MetalBase have come about from things like this (the
+    report writer, the data-entry interface, etc), so it really works.  Keep
+    'em coming...
+
+  * If you feel an urge to reach into your wallet and send me money, as I
+    said, I'm going to be the last to complain.  My address is:
+                   Richid Jernigan IV
+                   PO Box 827
+                   Norris, TN  37828   <- Yes, folks, he's from TN! <Speee-it!>
+    Gimme a name and a mailing address (internet or bitnet account names are
+    fine -- just so I can distribute code / information), and you'll receive
+    the following (no guarantees, but I'll try):
+       - Any new versions of MetalBase, whenever they pop up (provided I don't
+         lose my stupid registration list like I did after 4.1a--sorry
+         everyone!)
+       - The privilege of being able to request modifications or development
+         of any of the previously-mentioned utilities (which will be sent to
+         everyone on the list when available)
+       - The privilege of being able to demand fixes to any bugs you find (now
+         wouldn't _that_ be fun?)
+       - A big smiley from me (worth it, isn't it?  Wreeetch!)
+
+-------------------------------------------------------------------------------
+                                                               Richid
+-------------------------------------------------------------------------------
+

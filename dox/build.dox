@@ -1,0 +1,229 @@
+Build Documentation                                               MetalBase 5.0
+-------------------------------------------------------------------------------
+
+                                  Function
+
+Relations are built from schema files, which decribe the relation in a more
+human-friendly syntax.  Schema for MetalBase 4.0 and up relations take the
+following form (Words in brackets are optional syntax, words enclosed in <>
+are sample entries):
+
+        [relation] <equipment>
+
+        field <customer>         [type] <string> [length/*] <5> ;
+        field <num_purchased>    [type] <ushort> ;
+        field <part_number>      [type] <char>   [length/*] <4> ;
+        field <shop_address>     [type] <char>   [length/*] <11> ;
+        field <price_code>       [type] <money> ;
+        field <transaction>      [type] <serial> [<start 100>] ;
+
+        index customer [on] customer                 [<with duplicates>] ;
+        index part     [on] part_number,price_code   [with duplicates] ;
+        index ix_price [on] price_code               [<with duplicates>] ;
+
+        [<typedef <equ> >] ;
+
+        end
+
+Ah, but note:  4.1 and up expect to find SEMICOLONS after every line save
+"Relation..." and "End"!  It's okay if they're not there, but better get
+in the habit, 'cause report and form will choke heavily without their
+semicolons.
+
+Build is the program which reads these schema and creates MetalBase-format
+relations from them; in addition, build released with mbase 4.0 and up can
+create C-style header files for interface with metalbase routines; these look
+somewhat like this:
+
+   #ifndef EQUIPMENT_H
+   #define EQUIPMENT_H
+
+   /*
+    * This file was created by MetalBase version 5.0 to reflect the structure
+    * of the relation "equipment".
+    *
+    * MetalBase 5.0 released October 1992 by virtual!richid@owlnet.rice.edu
+    *
+    */
+
+   typedef struct
+    { char    customer[5];          /* field customer type string length 5   */
+      ushort  num_purch;            /* field num_purch type ushort           */
+      char    part_numb[4];         /* field part_numb type string length 4  */
+      char    shop_addr[11];        /* field shop_addr type string length 11 */
+      double  price_code;           /* field price_code type money           */
+      long    trans;                /* field trans type serial start 100     */
+      } equipment_str;
+
+   #ifndef MODULE
+      equipment_str equipment_rec;
+   #else
+      extern equipment_str equipment_rec;
+   #endif
+
+   #endif
+
+The headers created by build include actual data (the reference to
+      equipment_str equipment_rec
+above), that should be local to only one module of a multiple .c-program
+executable; all the others should have the headers' variables declared as
+external.  So the headers use #ifdefs and check for the definition of MODULE--
+if it's there, variables are declared external, if not, they're declared local.
+That way, variables always go in this one piece of .c code.
+
+
+                             Command-Line Options
+
+Build's command line is rather simple:
+      build [-q] [-h] schemaname
+   Where
+      -q indicates no output should be sent; all questions are assumed to
+         be answered by their defaults.
+      -h indiciates the header file should be created.  When used with -q,
+         this overrides the "No" default answer for build's question; when
+         used without, the header will be created without the user being
+         asked interactively.
+
+The schemaname may optionally be terminated in .s; if it is missing, it is
+added by build.  MetalBase requires that schema be terminated in .s, and
+relations in .rel.
+
+
+                                   Format
+
+The build utility released with versions 3.1 and higher supports comments at
+the end of the "field" and "index" lines, and that's it--that's totally
+pathetic.  5.0 accepts comments anywhere, like a makefile--anything after a
+# is ignored.  Likewise are form and report.  Empty lines are ignored.
+
+        # Comments
+
+        [relation] <equipment>   # Another comment.
+
+        field <custo...
+
+    The first line of a schema simply tells the computer what to call the new
+relation.  The word 'relation' is optional, as is all text enclosed in
+brackets in the description way up above.
+    The second section of a schema describes the fields of which every record
+in the relation will be composed.  The word immediately following 'field' is
+simply a name for the field.  Fields may be any of twelve types:
+
+       string/char/character    short             unsigned short
+       long                     unsigned long     float
+       double                   money             time
+       date                     serial            phone
+
+   MetalBase 4.0 and up surpass 3.2 in that they understand the following
+   fields that 3.2 just didn't know about:
+      phone  - This corresponds to the typedef mb_phone, which is actually
+               20 characters.  Fields stored in this type of field are parsed
+               before writing into the database, and sorted correctly
+               regardless of missing or extra pieces of data (extensions,
+               area codes, etc).
+      money  - Fields of this type are actually doubles which are automatically
+               rounded by MetalBase before adding them to a relation.  There
+               is no typedef to support this--use double.
+      time   - MetalBase uses a long to contain a 24-hour clock (including
+               precision to microseconds, though the built-in date-n-time
+               routines only go to seconds), and sorts and stores these
+               appropriately.  There is a typedef (mb_time) for these fields.
+      date   - MetalBase uses a long to contain a date, with range from the
+               year -4096 to 4096, and precision down to the day.  Routines
+               are also included to obtain the current date and time, and
+               to manipulate these formats.  There is a typedef (mb_date) for
+               these fields... use mb_date and mb_time fields as if they were
+               longs, for purposes of returning and passing values.
+      serial - Something that has really been missing from MetalBase.  Each
+               relation now has a counter, and every time a new record is
+               added, the counter goes up--it never goes back down.  If the
+               relation has a serial field, it is automatically filled in by
+               the system--set to this counter's value at the time of addition.
+               In this way, each record can be stamped with a serial code for
+               reference--guaranteed to be unique, record to record (and
+               appropriately, any index containing a serial field as part of
+               itself is automatically marked 'no duplicates allowed').  Serial
+               numbers start at zero unless the parameter "start xxx" is
+               specified in the schema.  Serials are represented as longs;
+               there is no typedef.
+
+   The next point of interest is the number after 'length' or '*' in a
+character field... this number indicates the number of characters in that
+field.  MetalBase will allow any positive integer here your computer can
+handle, and if any length, or the sum of all lengths, is indeed large, _build_
+will prompt you to add certain lines to the beginning of your code to warn the
+system of excessive-length records.
+
+    After all fields have been declared, indicies are placed on fields and
+combinations of fields.  MetalBase requires that you have at least one index
+in any relation (this is only logical--a database without indicies is nothing
+more than a text file).  After the word 'index' in each line, the index must
+be given a name (whether or not it is used it up to the programmer), followed
+by names of fields to be indexed, separated by commas (note that this is VERY
+DIFFERENT from previous versions of MetalBase.  Because version 4.0 and up read
+records directly into structures, the vertical bar ("|") is no longer used at
+all).  If more than one field name appears, MetalBase will declare that index
+composite.
+
+    Occasionally certain data should not be repeated... for instance, a
+person obviously cannot visit a physician's office twice at the same time.  In
+this case, were a relation defined as consisting of the fields "name" and
+"visit_time", an index would be declared on "name,time" WITHOUT including the
+words 'with duplicates', as seen above.  If such a relation were built,
+MetalBase would not allow the space-time continuum to be stretched, as
+described previously.  Including the words 'with duplicates' after the
+definition of an index removes this error-catching system, for that index
+alone.  Use of the duplicate-catching system is entirely a case-to-case
+decision... there is little difference in the amount of time used between
+implementing and not implementing it.
+
+    If the schema described previously exists as "/usr/joe/equip.s", the
+command BUILD, a utility included for use with MetalBase, will create a
+relation called "equipment.rel" under the directory "/usr/joe".  A sample
+output of BUILD is as follows:
+
+        % build /usr/joe/equip.s
+        Building relation equipment under current directory
+
+        Fields___________________________________________________
+        customer [char *5]            num_purchased [ushort]
+        part_number [char *4]         shop_address [char *11]
+        price_code [money]            transaction [serial @100]
+
+        Indicies_________________________________________________
+        customer.....customer................Duplicates allowed
+        part.........part_number,price_code..Duplicates not allowed
+        ix_price.....price_code..............Duplicates allowed
+
+        Continue with the creation of the relation [Y/n] ? <y>
+        Create header file for this relation       [y/N] ? <y>
+
+        Header file created.
+        Relation created--zero entries.
+
+        % ls -C /usr/joe
+        equip.s         equipment.rel       equipment.h
+        %
+
+    Once a relation has been built, it contains no entries, and is ready for
+use.  BUILD's sole use is the creation of relations... other utilities
+(discussed later) must be used for maintenance of relations (if needed).
+
+    A recent addition to build's operation is its ability to create header
+files for your programs.  When interacting with MetalBase routines, you must
+pass pointers to structures where data can be placed--build now creates these
+structures for you, removing chances for error along with mindless tedium.
+Note that, as in the above example, the line 'typedef equ' has caused the
+structure to be named as:
+
+         typedef struct { ... } equ;
+         equ  equ_rec;
+
+If this line (typedef equ) were not present in the schema, the structure
+would have been named with:
+
+         typedef struct { ... } equipment_str;
+         equipment_str  equipment_rec;
+
+That is, the relation name appended with "_str".
+
